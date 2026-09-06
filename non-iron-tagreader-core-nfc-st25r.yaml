@@ -51,9 +51,16 @@ st25r_i2c:
   status:
     name: "NFC Reader Health"
     entity_category: DIAGNOSTIC
+    device_class: connectivity
   field_strength:
+    id: field_strength_mv
     name: "NFC Field Strength"
     entity_category: DIAGNOSTIC
+    unit_of_measurement: "mV"
+    device_class: voltage
+    accuracy_decimals: 1
+    filters:
+      - multiply: 13.02
   on_tag_removed:
     - binary_sensor.template.publish:
         id: is_tag
@@ -84,6 +91,17 @@ st25r_i2c:
         action: "tagScanned"
         uid: !lambda 'return x;'
     - script.execute: led_ok
+
+sensor:
+  - platform: copy
+    source_id: field_strength_mv
+    name: "NFC Field Strength %"
+    entity_category: DIAGNOSTIC
+    unit_of_measurement: "%"
+    device_class: ""
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.030119575
 
 switch:
   - platform: template
