@@ -9,12 +9,15 @@ packages:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
+  name_add_mac_suffix: false
 
+# Enable logging
 logger:
   level: DEBUG
   logs:
     component: ERROR
 
+# Enable Home Assistant API
 api:
   encryption:
     key: !secret api_password
