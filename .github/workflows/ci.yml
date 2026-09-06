@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '*.yaml'
+      - 'secrets.yaml.example'
       - '.github/workflows/ci.yml'
   schedule:
     - cron: '0 9 1,11,21 * *'
@@ -13,9 +14,96 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
+  # ---------------------------------------------------------------------
+  # Fast, cheap checks first — fail quickly on the easy stuff before
+  # spending time on the ESPHome toolchain or a full compile.
+  # ---------------------------------------------------------------------
+
+  yaml-lint:
+    name: YAML syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Parse every top-level yaml file
+        run: |
+          python3 - <<'PYEOF'
+          import glob
+          import sys
+
+          import yaml
+
+          # Subclasses SafeLoader (not Loader/UnsafeLoader) — the multi-constructor
+          # below only ever calls the safe scalar/sequence/mapping constructors,
+          # so this is safe_load with tolerance for ESPHome's custom tags, not
+          # arbitrary Python object construction.
+          class Loose(yaml.SafeLoader):
+              pass
+
+          # ESPHome yaml uses custom tags (!secret, !lambda, !include) that
+          # plain safe_load doesn't know about — treat any unknown tag as an
+          # opaque scalar/sequence/mapping so this only checks that the file
+          # is syntactically valid YAML, not that ESPHome understands it.
+          def _construct_any(loader, tag_suffix, node):
+              if isinstance(node, yaml.ScalarNode):
+                  return loader.construct_scalar(node)
+              if isinstance(node, yaml.SequenceNode):
+                  return loader.construct_sequence(node)
+              return loader.construct_mapping(node)
+
+          Loose.add_multi_constructor("", _construct_any)
+
+          failed = False
+          for path in sorted(glob.glob("*.yaml") + glob.glob("*.yml")):
+              try:
+                  with open(path) as f:
+                      yaml.load(f, Loader=Loose)
+              except yaml.YAMLError as exc:
+                  print(f"::error file={path}::{exc}")
+                  failed = True
+          sys.exit(1 if failed else 0)
+          PYEOF
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  validate-configs:
+    name: ESPHome config validation
+    runs-on: ubuntu-latest
+    needs: [yaml-lint]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Install ESPHome
+        run: pip install esphome
+      - name: Validate every top-level config
+        run: |
+          cp secrets.yaml.example secrets.yaml
+          for f in non-iron-tagreader.factory.yaml non-iron-tagreader-st25r.factory.yaml non-iron-tagreader-st25r-custom.yaml; do
+            echo "::group::esphome config $f"
+            esphome config "$f"
+            echo "::endgroup::"
+          done
+          rm secrets.yaml
+
+  # ---------------------------------------------------------------------
+  # Build last — most expensive, most likely to catch actual compile
+  # errors that config validation alone can't see.
+  # ---------------------------------------------------------------------
+
+  build:
     name: Building ${{ matrix.file }} / ${{ matrix.esphome-version }}
     runs-on: ubuntu-latest
+    needs: [validate-configs, secret-scan]
     strategy:
       fail-fast: false
       max-parallel: 3

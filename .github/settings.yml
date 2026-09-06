@@ -1,0 +1,16 @@
+# https://github.com/apps/settings
+# https://github.com/repository-settings/app
+
+_extends: .github
+repository:
+  name: non-iron-tagreader-st25r
+  description: "No soldering required - snap together and read NFC"
+  homepage: https://luka6000.github.io/non-iron-tagreader/
+  topics: esphome, home-assistant, nfc, rfid, m5stack, esp32, st25r, diy
+  private: false
+  # Override the org default of master — this repo's actual default branch
+  # is main, inherited from upstream (luka6000/non-iron-tagreader). Every
+  # dashboard_import and update-manifest URL in this repo is hardcoded to
+  # @main; letting the org default silently rename the branch would break
+  # all of them.
+  default_branch: main
