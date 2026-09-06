@@ -48,6 +48,12 @@ st25r_i2c:
   address: 0x50
   update_interval: 350ms
   aat_enabled: false
+  status:
+    name: "NFC Reader Health"
+    entity_category: DIAGNOSTIC
+  field_strength:
+    name: "NFC Field Strength"
+    entity_category: DIAGNOSTIC
   on_tag_removed:
     - binary_sensor.template.publish:
         id: is_tag
@@ -78,3 +84,19 @@ st25r_i2c:
         action: "tagScanned"
         uid: !lambda 'return x;'
     - script.execute: led_ok
+
+switch:
+  - platform: template
+    name: "RF Field"
+    id: rf_field
+    entity_category: CONFIG
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_on_action:
+      - st25r.set_rf_field:
+          id: nfc_board
+          field_on: true
+    turn_off_action:
+      - st25r.set_rf_field:
+          id: nfc_board
+          field_on: false
