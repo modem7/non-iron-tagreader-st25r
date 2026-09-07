@@ -1,0 +1,24 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{yml,yaml,json,toml}]
+indent_size = 2
+
+[*.{js,ts,jsx,tsx,css,scss,html,vue,svelte}]
+indent_size = 2
+
+[Makefile]
+indent_style = tab
+
+[*.{md,rst}]
+trim_trailing_whitespace = false
+
+[*.sh]
+end_of_line = lf
