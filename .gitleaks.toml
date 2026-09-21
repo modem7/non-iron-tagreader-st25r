@@ -1,0 +1,9 @@
+title = "non-iron-tagreader-st25r gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Historical example-file value flagged in full-history scans"
+regexTarget = "line"
+paths = ['''secrets\.yaml\.example''']
